@@ -2,6 +2,12 @@
 
 > Hassle-Free PHP Micro Framework for simple and lightweight applications.
 
+## Requirements
+
+-   **PHP**: 8.0 or higher
+-   **Database**: MySQL 8.0 or higher
+-   **Extensions**: `pdo_mysql`, `json`, `mbstring`
+
 **2bo Light PHP** is a single-file, zero-dependency PHP micro framework designed for real-world hosting environments where VPS access might not be available or necessary. It focuses on simplicity, stability, and ease of deployment.
 
 ## Key Features
