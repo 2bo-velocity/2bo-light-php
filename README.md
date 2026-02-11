@@ -22,7 +22,7 @@ Simply download `2boLight.php` and include it in your project.
 
 ```php
 require_once '2boLight.php';
-```
+````
 
 ### Option 2: via Composer (Optional)
 
@@ -92,8 +92,9 @@ $app->post('/api/data', function() use ($app) {
 ### Security Helpers
 
 #### Input Sanitization
-- `e($string)`: Escape HTML special characters (XSS protection).
-- `input($key, $default)`: Safely retrieve request parameters (`$_REQUEST`).
+
+* `e($string)`: Escape HTML special characters (XSS protection).
+* `input($key, $default)`: Safely retrieve request parameters (`$_REQUEST`).
 
 ```php
 $name = $app->input('name', 'Guest');
@@ -101,27 +102,33 @@ echo "Hello " . $app->e($name);
 ```
 
 #### CSRF Protection
+
 CSRF protection is **enabled by default** for all "unsafe" methods (POST, PUT, DELETE, PATCH).
 
-1.  **Include the token in your forms:**
-    ```php
-    <input type="hidden" name="csrf_token" value="<?php echo $app->csrf_token(); ?>">
-    ```
+1. **Include the token in your forms:**
 
-2.  **That's it!** The framework automatically validates the token. If validation fails, it returns a 403 error.
+   ```php
+   <input type="hidden" name="csrf_token" value="<?php echo $app->csrf_token(); ?>">
+   ```
+
+2. **That's it!** The framework automatically validates the token. If validation fails, it returns a 403 error.
 
 **Exemption:** To disable CSRF checks for specific routes (e.g., APIs), use the `csrf_exempt` config:
+
 ```php
 'csrf_exempt' => ['/api/*', '/webhook'],
 ```
 
 #### Security Headers
+
 By default, the framework sends:
-- `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: SAMEORIGIN`
-- `X-XSS-Protection: 1; mode=block`
+
+* `X-Content-Type-Options: nosniff`
+* `X-Frame-Options: SAMEORIGIN`
+* `X-XSS-Protection: 1; mode=block`
 
 #### Bearer Authentication (API Token)
+
 You can protect your application using Bearer Token authentication by configuring it in the constructor.
 Authenticated requests **automatically bypass CSRF checks**, making it perfect for APIs.
 
@@ -136,16 +143,17 @@ $app = new TwoBoLight([
 ]);
 ```
 
-- **Enabled**: Set to `true` to activate Bearer authentication globally.
-- **Tokens**: Array of valid tokens.
-- **Exempt**: Array of path patterns (prefixes) to exclude from authentication.
-- When active, non-exempt routes **MUST** have a valid `Authorization: Bearer <token>` header.
-- If the token is valid, **CSRF checks are skipped** for that request.
-- If the token is missing or invalid on a protected route, it returns `401 Unauthorized`.
+* **Enabled**: Set to `true` to activate Bearer authentication globally.
+* **Tokens**: Array of valid tokens.
+* **Exempt**: Array of path patterns (prefixes) to exclude from authentication.
+* When active, non-exempt routes **MUST** have a valid `Authorization: Bearer <token>` header.
+* If the token is valid, **CSRF checks are skipped** for that request.
+* If the token is missing or invalid on a protected route, it returns `401 Unauthorized`.
 
 ### Response Helpers
 
 #### JSON Response
+
 Send JSON responses easily with proper headers.
 
 ```php
@@ -153,6 +161,7 @@ $app->json(['status' => 'ok', 'data' => [1, 2, 3]]);
 ```
 
 #### Redirect
+
 Redirect to another URL.
 
 ```php
@@ -162,6 +171,7 @@ $app->redirect('/login');
 ### Error Handling
 
 #### Custom 404 / 500 Pages
+
 Define custom handlers for Not Found (404) and Server Errors (500).
 
 ```php
@@ -214,11 +224,78 @@ $app->get('/users', function() use ($app) {
 });
 ```
 
+## Server Configuration (For Pretty URLs / Routing)
+
+To enable **clean URLs** and route all requests through `index.php` (required for parameterized routes), configure your web server as follows:
+
+### Apache (`.htaccess`)
+
+Place this `.htaccess` file in your project root:
+
+```apache
+RewriteEngine On
+
+# Skip existing files and directories
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Redirect everything else to index.php
+RewriteRule ^ index.php [QSA,L]
+```
+
+**Notes:**
+
+* Requests for existing files (images, CSS, JS) will be served normally.
+* All other requests are forwarded to `index.php`, where TwoBoLight handles routing.
+* Make sure `mod_rewrite` is enabled on your Apache server.
+
+### Nginx (Server Block Example)
+
+Add this to your server block configuration:
+
+```nginx
+server {
+    listen 80;
+    server_name example.com;
+    root /path/to/project;
+
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_pass 127.0.0.1:9000; # Adjust to your PHP-FPM socket or host
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+```
+
+**Notes:**
+
+* Requests for static files are served directly.
+* All other requests are passed to `index.php`.
+* Adjust `fastcgi_pass` according to your PHP-FPM setup.
+
+**Optional Notes for Users**
+
+* Shared hosting? `.htaccess` is usually sufficient.
+* Nginx requires access to the server configuration.
+* Once configured, routes like `/hello/:name` or `/api/status` will work as expected.
+
+---
+
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
 
----
-
 **Author:** [2bo](https://github.com/2bo-velocity)
 **Copyright:** (c) 2026 2bo
+
+```
