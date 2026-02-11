@@ -1,0 +1,21 @@
+# 2bo Light PHP
+/logs/*
+!.gitkeep
+.maintenance
+
+# Environment
+.env
+.env.*
+
+# Composer
+/vendor/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
