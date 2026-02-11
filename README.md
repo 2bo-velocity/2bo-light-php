@@ -13,6 +13,7 @@
 - **Developer Friendly:** JSON responses, redirects, and simple routing.
 - **Hassle-Free:** Minimal configuration. No complex setup.
 - **Database Optional:** Simple PDO wrapper included, but validated only when needed.
+- **CLI / Batch Jobs:** Easily run scheduled or one-off tasks via command line.
 
 ## Installation
 
@@ -134,11 +135,10 @@ Authenticated requests **automatically bypass CSRF checks**, making it perfect f
 
 ```php
 $app = new TwoBoLight([
-    // ... other config
     'bearer_auth' => [
         'enabled' => true,
         'tokens'  => ['my-secret-token', 'another-token'],
-        'exempt'  => ['/public', '/login'], // Paths to exempt from Bearer auth
+        'exempt'  => ['/public', '/login'],
     ],
 ]);
 ```
@@ -181,7 +181,6 @@ $app->set404(function() {
 
 $app->set500(function($e) {
     echo "<h1>Oops! Something went wrong.</h1>";
-    // $e contains the functionality exception object
 });
 ```
 
@@ -224,41 +223,73 @@ $app->get('/users', function() use ($app) {
 });
 ```
 
+## CLI / Batch Jobs
+
+**2bo Light PHP** can also be used to run CLI batch jobs for cron tasks or other scheduled scripts.
+
+### Registering Batch Jobs
+
+Use the `batch()` method to define a named job:
+
+```php
+$app->batch('sendEmails', function() use ($app) {
+    echo "Sending emails...\n";
+    // Add email sending logic here
+});
+
+$app->batch('cleanupLogs', function() use ($app) {
+    echo "Cleaning up logs...\n";
+    $files = glob(__DIR__ . '/logs/*.log');
+    foreach ($files as $f) unlink($f);
+});
+```
+
+### Running Batch Jobs
+
+Run the batch job using PHP CLI and provide the job name as an argument:
+
+```bash
+php cron.php sendEmails
+php cron.php cleanupLogs
+```
+
+* If no job name is given, the framework will list all available batch jobs.
+* If an invalid job name is given, it will display an error message.
+
+### Using Cron
+
+You can schedule batch jobs using `cron`:
+
+```bash
+# Run "sendEmails" batch job every day at 1 AM
+0 1 * * * /usr/bin/php /path/to/cron.php sendEmails
+```
+
+**Notes:**
+
+* The same `2boLight.php` file handles both web requests and CLI batch execution.
+* Batch jobs have access to database connections, logging, and all framework features.
+
 ## Server Configuration (For Pretty URLs / Routing)
 
 To enable **clean URLs** and route all requests through `index.php` (required for parameterized routes), configure your web server as follows:
 
 ### Apache (`.htaccess`)
 
-Place this `.htaccess` file in your project root:
-
 ```apache
 RewriteEngine On
-
-# Skip existing files and directories
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-
-# Redirect everything else to index.php
 RewriteRule ^ index.php [QSA,L]
 ```
 
-**Notes:**
-
-* Requests for existing files (images, CSS, JS) will be served normally.
-* All other requests are forwarded to `index.php`, where TwoBoLight handles routing.
-* Make sure `mod_rewrite` is enabled on your Apache server.
-
 ### Nginx (Server Block Example)
-
-Add this to your server block configuration:
 
 ```nginx
 server {
     listen 80;
     server_name example.com;
     root /path/to/project;
-
     index index.php;
 
     location / {
@@ -267,7 +298,7 @@ server {
 
     location ~ \.php$ {
         include fastcgi_params;
-        fastcgi_pass 127.0.0.1:9000; # Adjust to your PHP-FPM socket or host
+        fastcgi_pass 127.0.0.1:9000;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
     }
 
@@ -277,18 +308,6 @@ server {
 }
 ```
 
-**Notes:**
-
-* Requests for static files are served directly.
-* All other requests are passed to `index.php`.
-* Adjust `fastcgi_pass` according to your PHP-FPM setup.
-
-**Optional Notes for Users**
-
-* Shared hosting? `.htaccess` is usually sufficient.
-* Nginx requires access to the server configuration.
-* Once configured, routes like `/hello/:name` or `/api/status` will work as expected.
-
 ---
 
 ## License
@@ -297,5 +316,3 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 **Author:** [2bo](https://github.com/2bo-velocity)
 **Copyright:** (c) 2026 2bo
-
-```

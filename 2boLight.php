@@ -8,11 +8,12 @@ declare(strict_types=1);
  *
  * @author 2bo <https://github.com/2bo-velocity>
  * @license MIT
- * @version 1.0.0
+ * @version 1.1.0
  */
 class TwoBoLight
 {
     private array $routes = [];
+    private array $batchJobs = [];
     private array $config = [];
     private ?PDO $db = null;
     private $notFoundHandler = null;
@@ -121,6 +122,17 @@ class TwoBoLight
             'path' => $path,
             'callback' => $callback
         ];
+    }
+
+    /**
+     * Register a batch job
+     * 
+     * @param string $name Job name
+     * @param callable $callback Job logic
+     */
+    public function batch(string $name, callable $callback): void
+    {
+        $this->batchJobs[$name] = $callback;
     }
 
     /**
@@ -295,9 +307,47 @@ class TwoBoLight
     /**
      * Run the application
      */
+    /**
+     * Run a batch job based on CLI arguments
+     */
+    public function runBatch(): void
+    {
+        global $argv;
+        $jobName = $argv[1] ?? null;
+
+        if (!$jobName) {
+            echo "Available batch jobs:\n";
+            foreach (array_keys($this->batchJobs) as $name) {
+                echo " - $name\n";
+            }
+            exit;
+        }
+
+        if (!isset($this->batchJobs[$jobName])) {
+            echo "Batch job '$jobName' not found.\n";
+            exit(1);
+        }
+
+        try {
+            call_user_func($this->batchJobs[$jobName]);
+        } catch (Throwable $e) {
+            echo "Error in batch job '$jobName': " . $e->getMessage() . "\n";
+            exit(1);
+        }
+    }
+
+    /**
+     * Run the application
+     */
     public function run(): void
     {
         try {
+            // Check for CLI execution
+            if (php_sapi_name() === 'cli') {
+                $this->runBatch();
+                return;
+            }
+
             $this->checkMaintenance();
             $this->sendSecurityHeaders();
 
