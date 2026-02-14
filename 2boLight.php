@@ -37,12 +37,78 @@ class TwoBoLight
                 'tokens' => [],
                 'exempt' => [], // Paths to exempt from Bearer auth protection
             ],
+            'cors' => [
+                'enabled' => false,
+                'allowed_origins' => [], // Allowed domains, e.g. ['https://example.com'] or ['*'] for all.
+                'exempt' => [], // Paths to exempt from sending CORS headers
+            ],
         ], $config);
 
         date_default_timezone_set($this->config['timezone']);
 
         if ($this->config['csrf_protection'] && session_status() === PHP_SESSION_NONE) {
             session_start();
+        }
+    }
+
+    /**
+     * Handle CORS
+     */
+    private function handleCors(): void
+    {
+        $cors = $this->config['cors'] ?? [];
+        if (empty($cors['enabled'])) {
+            return;
+        }
+
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        // Remove trailing slash if not root
+        if ($uri !== '/' && substr($uri, -1) === '/') {
+            $uri = substr($uri, 0, -1);
+        }
+
+        // Check exemptions
+        if (!empty($cors['exempt'])) {
+            foreach ($cors['exempt'] as $exemptPath) {
+                $pattern = "#^" . str_replace('*', '.*', $exemptPath) . "$#";
+                if (preg_match($pattern, $uri)) {
+                    return;
+                }
+            }
+        }
+
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        $allowedOrigins = $cors['allowed_origins'] ?? [];
+        $isAllowed = false;
+
+        if (in_array('*', $allowedOrigins)) {
+            $isAllowed = true;
+            if (!empty($origin)) {
+                // If specific origin is present, echo it back for better compatibility with credentials
+                // providing allowed_origins is just '*'
+                header("Access-Control-Allow-Origin: $origin");
+            } else {
+                 header("Access-Control-Allow-Origin: *");
+            }
+        } elseif (in_array($origin, $allowedOrigins)) {
+            $isAllowed = true;
+            header("Access-Control-Allow-Origin: $origin");
+        }
+
+        if ($isAllowed) {
+            header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
+            header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-API-KEY");
+            header("Access-Control-Max-Age: 86400"); // Cache for 1 day
+        }
+
+        // Handle Preflight Options
+        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+            if ($isAllowed) {
+                http_response_code(200);
+            } else {
+                http_response_code(403);
+            }
+            exit;
         }
     }
 
@@ -350,6 +416,7 @@ class TwoBoLight
 
             $this->checkMaintenance();
             $this->sendSecurityHeaders();
+            $this->handleCors();
 
             $method = $_SERVER['REQUEST_METHOD'];
             $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
