@@ -1,6 +1,7 @@
 # 2bo Light PHP
 /logs/*
 !.gitkeep
+!.htaccess
 .maintenance
 
 # Environment
